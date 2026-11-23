@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Lab {
+  id           String     @id @default(cuid())
+  slug         String     @unique
+  name         String
+  description  String
+  headquarters String
+  websiteUrl   String
+  logoBadge    String
+  foundedYear  Int
+  models       AIModel[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Provider {
+  id               String               @id @default(cuid())
+  slug             String               @unique
+  name             String
+  description      String
+  websiteUrl       String
+  avgLatencyMs     Int
+  uptimePercent    Float
+  supportedRegions String[]
+  offers           ModelProviderOffer[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+}
+
+model AIModel {
+  id               String               @id @default(cuid())
+  slug             String               @unique
+  name             String
+  labId            String
+  lab              Lab                  @relation(fields: [labId], references: [id], onDelete: Cascade)
+  description      String
+  modelType        String
+  releaseDate      DateTime
+  contextWindow    Int
+  maxOutputTokens  Int
+  inputPricePer1M  Float
+  outputPricePer1M Float
+  parameters       String
+  isOpenWeights    Boolean              @default(false)
+  capabilities     String[]
+  modalities       String[]
+  offers           ModelProviderOffer[]
+  benchmarkScores  ModelBenchmarkScore[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@index([labId, releaseDate])
+  @@index([modelType, isOpenWeights])
+}
+
+model ModelProviderOffer {
+  id               String   @id @default(cuid())
+  modelId          String
+  model            AIModel  @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  providerId       String
+  provider         Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  inputPricePer1M  Float
+  outputPricePer1M Float
+  latencyMs        Int
+  throughputTps    Int
+  isAvailable      Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  @@unique([modelId, providerId])
+  @@index([providerId, isAvailable])
+}
+
+model Benchmark {
+  id          String               @id @default(cuid())
+  slug        String               @unique
+  name        String
+  category    String
+  maxScore    Float
+  description String
+  scores      ModelBenchmarkScore[]
+}
+
+model ModelBenchmarkScore {
+  id          String    @id @default(cuid())
+  modelId     String
+  model       AIModel   @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  benchmarkId String
+  benchmark   Benchmark @relation(fields: [benchmarkId], references: [id], onDelete: Cascade)
+  score       Float
+  rank        Int
+
+  @@unique([modelId, benchmarkId])
+  @@index([benchmarkId, score])
+}
